@@ -12,20 +12,18 @@ import kotlinx.coroutines.runBlocking
 class NotificationWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
     override fun doWork(): Result {
         val taskId = inputData.getInt("TASK_ID", -1)
-        val taskTitle = inputData.getString("TASK_TITLE") ?: "Task"
-
         val database = AppDatabase.getDatabase(applicationContext)
 
-        val isStillPending = runBlocking {
+        return runBlocking {
             val task = database.taskDao().getTaskById(taskId)
-            task != null && !task.status
-        }
 
-        if (isStillPending) {
-            sendNotification(taskTitle)
+            if (task != null && !task.status) {
+                sendNotification(task.title)
+                Result.success()
+            } else {
+                Result.success()
+            }
         }
-
-        return Result.success()
     }
 
     private fun sendNotification(title: String) {
@@ -36,10 +34,11 @@ class NotificationWorker(context: Context, params: WorkerParameters) : Worker(co
         manager.createNotificationChannel(channel)
 
         val notification = NotificationCompat.Builder(applicationContext, channelId)
-            .setContentTitle("Deadline Expired!")
-            .setContentText("Status: Belum Selesai - $title")
+            .setContentTitle("Waktunya Habis! 🚀")
+            .setContentText("Tugas '$title' masih belum selesai")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
             .build()
 
         manager.notify(System.currentTimeMillis().toInt(), notification)

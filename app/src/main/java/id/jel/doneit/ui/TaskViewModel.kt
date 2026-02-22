@@ -17,10 +17,11 @@ class TaskViewModel(private val taskDao: TaskDao) : ViewModel() {
             initialValue = emptyList()
         )
 
-    fun addNewTask(title: String, deadline: Long) {
+    fun addNewTask(title: String, deadline: Long, onIdGenerated: (Int) -> Unit) {
         viewModelScope.launch {
-            val newTask = Task(title = title, deadline = deadline, status = false)
-            taskDao.insert(newTask)
+            val newTask = Task(title = title, deadline = deadline)
+            val newId = taskDao.insert(newTask).toInt()
+            onIdGenerated(newId)
         }
     }
 
