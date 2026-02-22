@@ -12,6 +12,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import id.jel.doneit.data.local.Task
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,7 +28,9 @@ fun HomeScreen(viewModel: TaskViewModel) {
             TopAppBar(title = { Text("DoneIt Tasks") })
         }
     ) { padding ->
-        Column(modifier = Modifier.padding(padding).padding(16.dp)) {
+        Column(modifier = Modifier
+            .padding(padding)
+            .padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = taskTitle,
@@ -74,6 +79,10 @@ fun HomeScreen(viewModel: TaskViewModel) {
 
 @Composable
 fun TaskItem(task: Task, onDelete: () -> Unit) {
+    val date = Date(task.deadline)
+    val formatter = SimpleDateFormat("MMM dd, yyyy - HH:mm", Locale.getDefault())
+    val formattedDate = formatter.format(date)
+
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -81,6 +90,12 @@ fun TaskItem(task: Task, onDelete: () -> Unit) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = task.title, style = MaterialTheme.typography.bodyLarge)
+
+                Text(
+                    text = "Created: $formattedDate",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
             }
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete")
