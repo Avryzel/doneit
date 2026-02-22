@@ -9,12 +9,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import id.jel.doneit.data.local.Task
+import id.jel.doneit.worker.NotificationWorker
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -22,15 +28,18 @@ fun HomeScreen(viewModel: TaskViewModel) {
     val tasks by viewModel.taskListState.collectAsState()
     var taskTitle by remember { mutableStateOf("") }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("DoneIt Tasks") })
         }
     ) { padding ->
-        Column(modifier = Modifier
-            .padding(padding)
-            .padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .padding(16.dp)
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = taskTitle,
@@ -41,7 +50,18 @@ fun HomeScreen(viewModel: TaskViewModel) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Button(onClick = {
                     if (taskTitle.isNotBlank()) {
-                        viewModel.addNewTask(taskTitle, System.currentTimeMillis())
+                        val oneMinute = 60 * 1000L
+                        val deadlineTime = System.currentTimeMillis() + oneMinute
+
+                        viewModel.addNewTask(taskTitle, deadlineTime)
+
+                        val workRequest = OneTimeWorkRequestBuilder<NotificationWorker>()
+                            .setInitialDelay(1, TimeUnit.MINUTES)
+                            .setInputData(workDataOf("TASK_TITLE" to taskTitle))
+                            .build()
+
+                        WorkManager.getInstance(context).enqueue(workRequest)
+
                         taskTitle = ""
                         keyboardController?.hide()
                     }
@@ -68,7 +88,10 @@ fun HomeScreen(viewModel: TaskViewModel) {
                     items(tasks, key = { it.id }) { task ->
                         TaskItem(
                             task = task,
-                            onDelete = { viewModel.deleteTask(task) }
+                            onDelete = { viewModel.deleteTask(task) },
+                            onStatusChange = { isChecked ->
+                                viewModel.updateTaskStatus(task, isChecked)
+                            }
                         )
                     }
                 }
@@ -78,7 +101,11 @@ fun HomeScreen(viewModel: TaskViewModel) {
 }
 
 @Composable
-fun TaskItem(task: Task, onDelete: () -> Unit) {
+fun TaskItem(
+    task: Task,
+    onDelete: () -> Unit,
+    onStatusChange: (Boolean) -> Unit
+) {
     val date = Date(task.deadline)
     val formatter = SimpleDateFormat("MMM dd, yyyy - HH:mm", Locale.getDefault())
     val formattedDate = formatter.format(date)
@@ -88,6 +115,11 @@ fun TaskItem(task: Task, onDelete: () -> Unit) {
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Checkbox(
+                checked = task.status,
+                onCheckedChange = onStatusChange
+            )
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = task.title, style = MaterialTheme.typography.bodyLarge)
 

@@ -19,7 +19,7 @@ class TaskViewModel(private val taskDao: TaskDao) : ViewModel() {
 
     fun addNewTask(title: String, deadline: Long) {
         viewModelScope.launch {
-            val newTask = Task(title = title, deadline = deadline)
+            val newTask = Task(title = title, deadline = deadline, status = false)
             taskDao.insert(newTask)
         }
     }
@@ -27,6 +27,13 @@ class TaskViewModel(private val taskDao: TaskDao) : ViewModel() {
     fun deleteTask(task: Task) {
         viewModelScope.launch {
             taskDao.delete(task)
+        }
+    }
+
+    fun updateTaskStatus(task: Task, isCompleted: Boolean) {
+        viewModelScope.launch {
+            val updatedTask = task.copy(status = isCompleted)
+            taskDao.updateTask(updatedTask)
         }
     }
 }
